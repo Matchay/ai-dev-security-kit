@@ -1,6 +1,6 @@
 # Security Guide for the AI Era — for "people who build products with AI"
 
-> Who this is for: developers who write little or no code, but build and launch real services/apps with AI assistance.
+> Who this is for: every developer who builds and launches real services/apps with AI assistance — whether you're a seasoned engineer or someone who writes little or no code.
 > Core idea: **AI can help you write code that runs, but it will not bear the security responsibility for you.** From the moment you launch, data leaks, financial losses, and legal risks are all yours.
 
 ---

@@ -10,7 +10,13 @@
  *     3. status <-> the authoritative level x check matrix (out-of-level groups must be
  *        not_applicable; a "check" group may not be downgraded to quick_clean)
  *     4. The body must contain the "Checked, not found / Not applicable" section and a filled-in
- *        Go/No-Go verdict, and the verdict must match the JSON
+ *        Go/No-Go verdict, and the verdict must match the JSON. Every heading / fixed field the
+ *        gate greps for accepts the English wording or its Chinese variant, so a report produced
+ *        with the kit's Chinese paste-in prompt validates too: "## Checked, not found" /
+ *        "## 已检查未发现" (optionally " / 不适用"), "Verdict:" / "结论：" / "上线结论：",
+ *        "Project level: L?" / "项目等级：L?", "## Remediation tracking..." / "## 上期整改追踪",
+ *        and "Not fixed / Partially fixed" / "未修复 / 部分修复". The JSON block itself is machine-
+ *        readable and stays English (report_version / level / go_no_go / groups).
  *   Tier 1 evidence chain (mandatory at L2+; optional at L0/L1 but validated when present):
  *     clean / quick_clean groups must carry evidence:
  *       { "kind": "command", "cmd": "...", "result": "..." }       mechanical tool, re-runnable
@@ -157,8 +163,8 @@ if (isMd) {
     bodyIds.add(id);
     const sec = id.slice(0, 2);
     if (cur.startsWith(sec)) sectionIds[sec].add(id);
-    if (/remediation/i.test(cur)) {
-      const st = line.match(/^\|\s*P0-\d+\s*\|[^|]*\|[^|]*?(Not fixed|Partially fixed)/);
+    if (/remediation|整改/i.test(cur)) {
+      const st = line.match(/^\|\s*P0-\d+\s*\|[^|]*\|[^|]*?(Not fixed|Partially fixed|未修复|部分修复)/);
       if (st) overdue.push({ id, status: st[1] });
     }
   }
@@ -265,10 +271,10 @@ if (isMd) {
   }
 
   // ---------- Tier 0 (4): section and verdict existence ----------
-  if (!/##\s*Checked, not found/.test(body)) {
-    errors.push('the body lacks a "## Checked, not found / Not applicable" section - the only basis for distinguishing "secure" from "unchecked"; never omit it');
+  if (!/##\s*(?:Checked,\s*not found|已检查[、，,]?\s*未发现)/.test(body)) {
+    errors.push('the body lacks a "## Checked, not found / Not applicable" section (Chinese variant: "## 已检查未发现 / 不适用") - the only basis for distinguishing "secure" from "unchecked"; never omit it');
   }
-  const conclusion = [...body.matchAll(/Verdict[:：]\s*\*{0,2}\s*(Go|No-Go)/g)]
+  const conclusion = [...body.matchAll(/(?:Verdict|结论|上线结论)[:：]\s*\*{0,2}\s*(Go|No-Go)/g)]
     .map((m) => ({ v: m[1], tail: body.slice(m.index + m[0].length, m.index + m[0].length + 3) }))
     .filter((x) => !/^\s*\/\s*No-Go/.test(x.tail));
   if (!conclusion.length) {
@@ -276,9 +282,9 @@ if (isMd) {
   } else if (data.go_no_go && conclusion[conclusion.length - 1].v !== data.go_no_go) {
     errors.push(`verdict conflicts with the coverage block: the body says "${conclusion[conclusion.length - 1].v}", go_no_go says ${JSON.stringify(data.go_no_go)}`);
   }
-  const headerLevel = body.match(/Project level[:：]\s*\*{0,2}\s*L([0-3])/);
+  const headerLevel = body.match(/(?:Project level|项目等级)[:：]\s*\*{0,2}\s*L([0-3])/);
   if (!headerLevel) {
-    errors.push('the report header lacks "Project level: L?"');
+    errors.push('the report header lacks "Project level: L?" (Chinese variant: "项目等级：L?")');
   } else if (level && headerLevel[1] !== level[1]) {
     errors.push(`level (${level}) does not match the report header (L${headerLevel[1]})`);
   }

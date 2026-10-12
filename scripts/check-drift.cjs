@@ -12,13 +12,20 @@
  * coverage JSON section, the source-of-truth pointer, the free-pass rule, the re-run
  * backfill duty, the scope statements). The rest of the checklist body is not compared;
  * syncing it is manual + code review. Also verifies: the audit-coverage JSON template block is
- * verbatim-identical across the four copies (BLOCK check), and the machine-readable MATRIX
- * copy in validate-coverage.cjs matches the authoritative matrix (MATRIX check).
+ * verbatim-identical across the four copies (BLOCK check); the machine-readable MATRIX copy in
+ * validate-coverage.cjs matches the authoritative matrix (MATRIX check); and the three condensed
+ * snippets are checked as a set - SNIPPET-BODY requires their bodies (per-host frontmatter and
+ * HTML usage comments stripped) to stay verbatim-identical pairwise, SNIPPET-ANCHOR requires every
+ * key fragment to be present in all three (three iron rules, three authorization questions, the
+ * IDOR line, the L0-L3 grading rule including "take the highest tier; round up when unsure", the
+ * four gate one-liners, the closing pointer to prompts/security-review-prompt.md) and pins each
+ * fragment to the authoritative source it was condensed from.
  *
  * Files checked: skills/secure-pipeline/SKILL.md, prompts/security-review-prompt.md,
  * adapt/codex/security-review-prompt.md (fragment-level); the three condensed snippets
- * (codex/AGENTS-snippet.md, cursor/secure-pipeline.mdc, gemini/GEMINI-snippet.md, key markers
- * only); README.md (Chinese scope statement) and README.en.md (English scope statement).
+ * (codex/AGENTS-snippet.md, cursor/secure-pipeline.mdc, gemini/GEMINI-snippet.md) as a set
+ * (SNIPPET-BODY + SNIPPET-ANCHOR below); README.md (Chinese scope statement) and
+ * README.en.md (English scope statement).
  *
  * Usage: node scripts/check-drift.cjs   (run from the repo root)
  * Exit code 0 = consistent; 1 = drift found.
@@ -126,6 +133,74 @@ for (const rule of CONTAIN_RULES) {
   for (const target of rule.targets) {
     if (!files[target].some((l) => rule.re.test(l))) {
       errors.push(`[missing] "${rule.what}" (/${rule.re.source}/) not found in ${target}.`);
+    }
+  }
+}
+
+// Type 2b (SNIPPET-BODY): the three condensed snippets are resident-context files shipped to
+// different hosts (Codex AGENTS.md / Cursor rule / Gemini GEMINI.md), so their bodies must stay
+// verbatim-identical to each other - a rewrite of one that forgets the other two is exactly the
+// drift the header promises to catch. Per-host frontmatter (the `---` block of the .mdc) and HTML
+// usage comments (`<!-- ... -->`) are host-specific and excluded; whitespace runs, list/number
+// prefixes and blank lines are normalized by `norm`.
+const snippetBody = (target) => {
+  const lines = files[target];
+  const fmEnd = lines[0] && lines[0].trim() === '---'
+    ? lines.findIndex((l, i) => i > 0 && l.trim() === '---') + 1
+    : 0;
+  return lines.slice(fmEnd)
+    .filter((l) => !/^\s*<!--/.test(l))
+    .map(norm)
+    .filter((l) => l.length > 0);
+};
+const snippetBodies = new Map(SNIPPETS.map((p) => [p, snippetBody(p)]));
+for (let i = 0; i < SNIPPETS.length; i++) {
+  for (let j = i + 1; j < SNIPPETS.length; j++) {
+    const a = snippetBodies.get(SNIPPETS[i]);
+    const b = snippetBodies.get(SNIPPETS[j]);
+    if (a.length !== b.length) {
+      errors.push(`[drift] condensed snippet body length differs: ${SNIPPETS[i]} has ${a.length} body line(s), ${SNIPPETS[j]} has ${b.length} (the three snippets must stay verbatim-identical apart from frontmatter / HTML comments).`);
+    }
+    for (let k = 0; k < Math.min(a.length, b.length); k++) {
+      if (a[k] !== b[k]) {
+        errors.push(`[drift] condensed snippet body line ${k + 1} differs:\n  ${SNIPPETS[i]}: ${a[k]}\n  ${SNIPPETS[j]}: ${b[k]}`);
+      }
+    }
+  }
+}
+
+// Type 2c (SNIPPET-ANCHOR): every key fragment of the condensed snippets must survive editing.
+// `re` is the shortest stable substring that uniquely matches the fragment (so punctuation or
+// wrapping differences elsewhere cannot cause a false positive); `authIn` + optional `authRe`
+// additionally pin the fragment to the authoritative source it was condensed from, so the three
+// snippets cannot drift away from the source of truth together. The fragment with no verbatim
+// authoritative counterpart (iron rule 1) is only cross-checked against the three snippets.
+const SNIPPET_ANCHORS = [
+  { re: /All external input is untrusted/, what: 'iron rule 1 (all external input is untrusted)' },
+  { re: /Secrets live on the server only/, what: 'iron rule 2 (secrets live on the server only)', authIn: [SKILL] },
+  { re: /Amounts, quantities, discounts, and permissions are computed server-side/, what: 'iron rule 3 (amounts/quantities/discounts/permissions computed server-side)', authIn: [SKILL] },
+  { re: /Who is calling\? \(authentication\)/, what: 'authorization question 1 (who is calling)', authIn: [SKILL], authRe: /three authorization questions/ },
+  { re: /Are they allowed to do this\? \(role\/permission\)/, what: 'authorization question 2 (role/permission)', authIn: [SKILL], authRe: /three authorization questions/ },
+  { re: /Does this specific record belong to them\? \(ownership check\)/, what: 'authorization question 3 (ownership check)', authIn: [SKILL], authRe: /three authorization questions/ },
+  { re: /Any one unanswered = an IDOR vulnerability/, what: 'IDOR conclusion line (any one unanswered = an IDOR vulnerability)' },
+  { re: /Take the highest tier; when unsure, round up/, what: 'L0-L3 grading rule (take the highest tier; round up when unsure)', authIn: [SKILL], authRe: /round up/i },
+  { re: /Gate ① Design/, what: 'Gate ① Design one-liner', authIn: [SKILL] },
+  { re: /Gate ② Coding/, what: 'Gate ② Coding one-liner', authIn: [SKILL] },
+  { re: /Gate ③ Launch/, what: 'Gate ③ Launch one-liner', authIn: [SKILL] },
+  { re: /Gate ④ Operations/, what: 'Gate ④ Operations one-liner', authIn: [SKILL] },
+  { re: /prompts\/security-review-prompt\.md/, what: 'closing pointer to prompts/security-review-prompt.md', authIn: [SKILL] },
+];
+
+for (const anchor of SNIPPET_ANCHORS) {
+  for (const target of SNIPPETS) {
+    if (!snippetBodies.get(target).some((l) => anchor.re.test(l))) {
+      errors.push(`[missing] condensed snippet ${target} lacks the key fragment "${anchor.what}" (/${anchor.re.source}/) - the three snippets must keep every key fragment.`);
+    }
+  }
+  for (const target of anchor.authIn || []) {
+    const authRe = anchor.authRe || anchor.re;
+    if (!files[target].some((l) => authRe.test(l))) {
+      errors.push(`[source missing] the authoritative source ${target} no longer carries "${anchor.what}" (/${authRe.source}/) - restore the source of truth first, then re-sync the three condensed snippets.`);
     }
   }
 }

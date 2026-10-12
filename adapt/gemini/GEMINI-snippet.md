@@ -1,6 +1,6 @@
 <!-- Usage: append the block starting from "## Security Gate Pipeline (resident constraints)" below to the repo-root GEMINI.md, or to ~/.gemini/GEMINI.md to make it global. -->
 <!-- This file is the condensed version. GEMINI.md is resident context injected into every turn, so it keeps only the three iron rules, the three authorization questions, the level questionnaire, and one line per gate. -->
-<!-- For the full pre-launch review, use security-review-prompt.md (shipped with the repo); this file does not cover every check. -->
+<!-- For the full pre-launch review, use `prompts/security-review-prompt.md` (shipped with the repo); this file does not cover every check. -->
 
 ## Security Gate Pipeline (resident constraints)
 
@@ -40,4 +40,4 @@ Any one unanswered = an IDOR vulnerability. Queries always carry the ownership c
 - **Gate ③ Launch**: run an independent security review first, producing `security/risk-report.md` (P0 blocks launch / P1 fix soon / P2 suggestions + Go / No-Go verdict; every clean / quick_clean group at L2+ carries evidence — see the full review prompt).
 - **Gate ④ Operations**: monthly dependency scans, quarterly secret rotation, half-yearly backup restore drills, cloud billing alerts always on; when user scale or money involvement changes, return to Gate ① to re-grade.
 
-For the full security review use this kit's `security-review-prompt.md` paste-in version (shipped with the repo).
+For the full security review use this kit's `prompts/security-review-prompt.md` paste-in version (shipped with the repo).

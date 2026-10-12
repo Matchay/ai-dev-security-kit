@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 
 <!-- Placement: `.cursor/rules/secure-pipeline.mdc` (project-level rule; keep it in the repo so it travels with the project). -->
-<!-- This file is the condensed version, because Cursor rules are resident context injected into every turn. For the full pre-launch review, use security-review-prompt.md (shipped with the repo); this file does not cover every check. -->
+<!-- This file is the condensed version, because Cursor rules are resident context injected into every turn. For the full pre-launch review, use `prompts/security-review-prompt.md` (shipped with the repo); this file does not cover every check. -->
 
 ## Security Gate Pipeline (resident constraints)
 
@@ -44,4 +44,4 @@ Any one unanswered = an IDOR vulnerability. Queries always carry the ownership c
 - **Gate ③ Launch**: run an independent security review first, producing `security/risk-report.md` (P0 blocks launch / P1 fix soon / P2 suggestions + Go / No-Go verdict; every clean / quick_clean group at L2+ carries evidence — see the full review prompt).
 - **Gate ④ Operations**: monthly dependency scans, quarterly secret rotation, half-yearly backup restore drills, cloud billing alerts always on; when user scale or money involvement changes, return to Gate ① to re-grade.
 
-For the full security review use this kit's `security-review-prompt.md` paste-in version (shipped with the repo).
+For the full security review use this kit's `prompts/security-review-prompt.md` paste-in version (shipped with the repo).

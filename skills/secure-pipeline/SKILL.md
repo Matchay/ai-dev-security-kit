@@ -220,7 +220,7 @@ When generating any feature code, the following are hard requirements, not sugge
 A launch must be preceded by an **independent review**: performed by a reviewer who did not write the code.
 
 - When the host supports subagents (a read-only independent AI worker can be dispatched): dispatch `security-reviewer` to review the codebase read-only and return the report content.
-- When the host doesn't support them: have the user copy `security-review-prompt.md` (the paste-in review prompt shipped with this pipeline) to any AI, then paste the code or repository content.
+- When the host doesn't support them: have the user copy `prompts/security-review-prompt.md` (the paste-in review prompt shipped with this pipeline) to any AI, then paste the code or repository content.
 - The reviewer is read-only and never changes code. Whether to fix is the user's decision; you only execute the fixes.
 - **The main agent re-runs command-type evidence**: the reviewer (read-only, cannot execute commands) returns only pointer-type evidence or unconfirmed+blocker; before writing the report you must re-run each blocker/suggested command (gitleaks, npm audit, etc.), check the output matches the reviewer's conclusion, then backfill the evidence as kind=command (cmd+result). If a re-run contradicts the reviewer's conclusion → send it back for re-review. Paste mode has no such step; pointers are verified manually by the user.
 
